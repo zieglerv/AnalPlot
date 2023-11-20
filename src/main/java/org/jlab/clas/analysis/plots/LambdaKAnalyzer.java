@@ -4,30 +4,30 @@
  */
 package org.jlab.clas.analysis.plots;
 
-import java.io.FileNotFoundException;
-import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.swing.JOptionPane;
 import org.jlab.io.base.DataEvent;
 import org.jlab.io.hipo.HipoDataSource;
 import org.jlab.jnp.hipo4.data.SchemaFactory;
 import org.jlab.utils.system.ClasUtilsFile;
 import org.jlab.clas.analysis.Constants;
-
+import org.jlab.utils.options.OptionParser;
 /**
  *
  * @author veronique
  */
 public class LambdaKAnalyzer {
-    public static double beamE = 10.1998;
-    static PrintWriter p;
-    public static void main(String[] args) throws FileNotFoundException {
-        p = new PrintWriter("dumpfit.log");
+    public static void main(String args[]) {
+        OptionParser parser = new OptionParser("skim");
+        parser.setRequiresInputList(true);
+        parser.parse(args);
+        
         //double beamE = 10.6;
-        System.setProperty("CLAS12DIR", "/Users/veronique/Work/HighLumi/coatjava/coatjava/");
+        //System.setProperty("CLAS12DIR", "/Users/ziegler/BASE/Analysis/Analysis/coatjava/");
         //String mapDir = CLASResources.getResourcePath("etc")+"/data/magfield";
+       // System.out.println("RUNNING....");
         //System.out.println(mapDir);
         //try {
         //    MagneticFields.getInstance().initializeMagneticFields(mapDir,
@@ -41,38 +41,6 @@ public class LambdaKAnalyzer {
         SchemaFactory schemaFactory = new SchemaFactory();
         schemaFactory.initFromDirectory(dir);
         
-        // Show a popup to enter the input file name
-        String inputFile = JOptionPane.showInputDialog("Enter the input file name:");
-     
-        // Check if the user canceled the input
-        if (inputFile == null) {
-            System.out.println("No input file provided. Exiting.");
-            return;
-        }
-
-        //String inputFile = GenericAnalyzer.getInputFile();
-        
-        // Show a popup to enter the beam energy
-        String numberStr = JOptionPane.showInputDialog("Enter the beam energy:");
-        
-        // Check if the user canceled the input or entered an invalid number
-        if (numberStr == null) {
-            System.out.println("No number provided. Exiting.");
-            return;
-        }
-
-        try {
-            // Parse the number as a double
-            beamE = Double.parseDouble(numberStr);
-
-            // Now you can use the inputFile and number in your method
-            // Do something with inputFile and number
-            System.out.println("Input File: " + inputFile);
-            System.out.println("Beam energy: " + beamE +" GeV");
-        } catch (NumberFormatException e) {
-            System.out.println("Invalid number format. Exiting.");
-        }
-    
         
         Map<Integer, String> particlesPID = new HashMap<>();
         int parentPID = 999;
@@ -135,57 +103,68 @@ public class LambdaKAnalyzer {
         
         int counter = 0;
 
+        List<String> inputList = new ArrayList<>();
+        //inputList.add("/Users/ziegler/BASE/Analysis//RGK_FT_7.5GeVAredRecBanksA.hipo");
+        inputList =parser.getInputList();
         HipoDataSource reader = new HipoDataSource();
-        reader.open(inputFile);
+        
+        System.out.println(args.length);
+        for(String inputFile :  inputList) {
+            reader.open(inputFile);
 
-        while (reader.hasEvent()) {
-            counter++;
-            DataEvent event = reader.getNextEvent();
-            double hmass=0;      
-            gan.processEvent(event, beamE, GenericAnalReader.Target.PROTON);
-            List<Map<String, GenericAnalReader.Particle>> particlesMap = gan.gar.particleMaps;
-            //if(particlesMap.isEmpty()) continue;
-            for(Map<String, GenericAnalReader.Particle> m : particlesMap) {
-                if(!m.containsKey("Lambda")) continue;
-                //if(gan.gar.evParticle.isEmpty()) continue;
-                if(m.get("Lambda").r<5 && m.get("p").chi2pid<15 && m.get("pi").chi2pid<15 && m.get("K").chi2pid<15 &&
-                        Math.abs(m.get("K").mass-m.get("K").umass)<0.035
-                       // && Math.abs(m.get("K").mass-m.get("Lambda").getMissingMass(beamE, GenericAnalReader.Target.PROTON))<0.035
-                        //&&m.get("K").det==1 && m.get("p").det==1
-                        ) {
-                    double dvx = m.get("Lambda").vx - m.get("Lambda").v0x;
-                    double dvy = m.get("Lambda").vy - m.get("Lambda").v0y;
-                    double dvz = m.get("Lambda").vz - m.get("Lambda").v0z;
-                    double dvxy = Math.sqrt(dvx*dvx + dvy*dvy);
-                    
-                    if(hmass!=m.get("Lambda").mass)
-                        vtxH.fillVtxHistos(m.get("Lambda").mass, dvxy, dvz,m.get("p").pt);
-                    hmass=m.get("Lambda").mass;
-//                    double EL = m.get("p").e+m.get("pi").e;
-//                    double uPxL = m.get("p").upx+m.get("pi").upx;        
-//                    double uPyL = m.get("p").upy+m.get("pi").upy;  
-//                    double uPzL = m.get("p").upz+m.get("pi").upz;  
-//                    double uLMass = Math.sqrt(EL*EL-uPxL*uPxL-uPyL*uPyL-uPzL*uPzL);
-//                    
-//                    vtxHu.fillVtxHistos(uLMass, dvxy, dvz,m.get("p").pt);
-//                            
-                    if(Math.abs(m.get("Lambda").mass-Constants.particleMap.get(m.get("Lambda").pid).mass())<0.015 &&
-                        m.get("Lambda").getMissingMass(beamE, GenericAnalReader.Target.PROTON)>0.35 
-                            && m.get("Lambda").vz - m.get("LambdaK").vz>0.5
+            while (reader.hasEvent()) { 
+                counter++;
+                DataEvent event = reader.getNextEvent();
+                double hmass=0;    
+                if(!event.hasBank("ANAL::Event")) continue;
+                
+                double beamE = event.getBank("ANAL::Event").getFloat("beamenergy",0);
+                //event.getBank("ANAL:Event").getFloat("beamenergy", 0);
+                gan.processEvent(event, beamE, GenericAnalReader.Target.PROTON);
+                List<Map<String, GenericAnalReader.Particle>> particlesMap = gan.gar.particleMaps;
+                //if(particlesMap.isEmpty()) continue;
+                for(Map<String, GenericAnalReader.Particle> m : particlesMap) {
+                    if(!m.containsKey("Lambda")) continue;
+                    //if(gan.gar.evParticle.isEmpty()) continue;
+                    if(m.get("Lambda").r<5 && m.get("p").chi2pid<15 && m.get("pi").chi2pid<15 && m.get("K").chi2pid<15 &&
+                            Math.abs(m.get("K").mass-m.get("K").umass)<0.035
+                           // && Math.abs(m.get("K").mass-m.get("Lambda").getMissingMass(beamE, GenericAnalReader.Target.PROTON))<0.035
+                            //&&m.get("K").det==1 && m.get("p").det==1
                             ) {
-                        vtxH2.fillVtxHistos(m.get("LambdaK").mass, dvxy, dvz,m.get("p").pt);
+                        double dvx = m.get("Lambda").vx - m.get("Lambda").v0x;
+                        double dvy = m.get("Lambda").vy - m.get("Lambda").v0y;
+                        double dvz = m.get("Lambda").vz - m.get("Lambda").v0z;
+                        double dvxy = Math.sqrt(dvx*dvx + dvy*dvy);
+
+                        if(hmass!=m.get("Lambda").mass)
+                            vtxH.fillVtxHistos(m.get("Lambda").mass, dvxy, dvz,m.get("p").pt);
+                        hmass=m.get("Lambda").mass;
+    //                    double EL = m.get("p").e+m.get("pi").e;
+    //                    double uPxL = m.get("p").upx+m.get("pi").upx;        
+    //                    double uPyL = m.get("p").upy+m.get("pi").upy;  
+    //                    double uPzL = m.get("p").upz+m.get("pi").upz;  
+    //                    double uLMass = Math.sqrt(EL*EL-uPxL*uPxL-uPyL*uPyL-uPzL*uPzL);
+    //                    
+    //                    vtxHu.fillVtxHistos(uLMass, dvxy, dvz,m.get("p").pt);
+    //                            
+                        if(Math.abs(m.get("Lambda").mass-Constants.particleMap.get(m.get("Lambda").pid).mass())<0.015 &&
+                            m.get("Lambda").getMissingMass(beamE, GenericAnalReader.Target.PROTON)>0.35 
+                                && m.get("Lambda").vz - m.get("LambdaK").vz>0.5
+                                ) {
+                            vtxH2.fillVtxHistos(m.get("LambdaK").mass, dvxy, dvz,m.get("p").pt);
+                        }
                     }
                 }
-            }
-            
-            counter++;
-            if(counter%100000 == 0) System.out.println("Analyzed " + counter + " events");
-        }
-        //vtxH.plotHistograms(48);
-        //vtxHu.plotHistograms(46);
-        vtxH.fitHistograms(1.115, 0.007, 0.008, 1.09, 1.8); 
-        vtxH2.plotHistograms(45);
-    }
 
+                counter++;
+                if(counter%100000 == 0) System.out.println("Analyzed " + counter + " events");
+            }
+            //vtxH.plotHistograms(48);
+            //vtxHu.plotHistograms(46);
+            vtxH.fitHistograms(1.115, 0.007, 0.008, 1.09, 1.8); 
+            vtxH2.plotHistograms(45);
+        }
+    }
+    
     
 }

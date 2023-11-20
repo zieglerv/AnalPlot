@@ -5,6 +5,12 @@
 package org.jlab.clas.analysis.plots;
 
 import java.io.File;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -53,4 +59,24 @@ public class GenericAnalyzer {
 
         return null; // Return null if no file is selected or entered.
     }
+    
+    public static String[] findFiles(String userInput) {
+        List<String> foundFiles = new ArrayList<>();
+        try {
+            PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:" + userInput);
+            Files.walk(Paths.get("."))
+                    .filter(path -> pathMatcher.matches(path.getFileName()))
+                    .forEach(path -> foundFiles.add(path.toString()));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return foundFiles.toArray(new String[0]);
+    }
+
+    private static void displayFilePaths(String[] filePaths) {
+        for (String path : filePaths) {
+            System.out.println(path);
+        }
+    }
+    
 }

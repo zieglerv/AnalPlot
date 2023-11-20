@@ -23,9 +23,7 @@ import org.jlab.geom.prim.Vector3D;
  */
 public class LambdaPiAnalyzer {
     public static double beamE = 10.1998;
-    static PrintWriter p;
     public static void main(String[] args) throws FileNotFoundException {
-        p = new PrintWriter("dumpfit.log");
         //double beamE = 10.6;
         System.setProperty("CLAS12DIR", "/Users/veronique/Work/HighLumi/coatjava/coatjava/");
         //String mapDir = CLASResources.getResourcePath("etc")+"/data/magfield";
